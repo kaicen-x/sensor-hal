@@ -1,0 +1,6 @@
+# 示例：将所有的 .txt 文件标记为文本文件，并在检出时转换行尾
+*.rs    text    eol=lf
+*.json  text    eol=lf
+*.toml  text    eol=lf
+*.md    ext     eol=lf
+LICENSE text    eol=lf

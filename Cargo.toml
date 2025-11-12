@@ -1,0 +1,17 @@
+[package]
+name = "sensor-hal"
+description = "This is a platform-independent sensor driver library."
+version = "0.1.0"
+edition = "2021"
+license = "LGPL-2.1"
+categories = ["embedded", "hardware-support", "linux", "no-std"]
+keywords = ["arm", "cortex-m", "stm32", "risc-v", "x86", "hal"]
+repository = "https://github.com/kaicen-x/sensor-hal"
+readme = "README.md"
+
+[lib]
+name = "sensor_hal"
+path = "src/lib.rs"
+
+[dependencies]
+embedded-hal = "1.0.0"
