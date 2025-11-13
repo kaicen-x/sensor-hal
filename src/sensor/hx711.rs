@@ -16,11 +16,11 @@ pub enum ChannelGain {
 }
 
 /// Digital I/O Error
-pub enum DigitalIoError<T: InputPin, F: OutputPin> {
+pub enum DigitalIoError<I: InputPin, O: OutputPin> {
     /// Digital I/O input error
-    Input(T::Error),
+    Input(I::Error),
     /// Digital I/O output error
-    Output(F::Error),
+    Output(O::Error),
     /// Sensor not ready
     NotReady,
 }
@@ -45,18 +45,20 @@ where
 {
     /// Create an instance of the HX711 sensor driver
     pub fn new(
-        clock_pin: ClockPin,
+        mut clock_pin: ClockPin,
         data_pin: DataPin,
         delay_impl: Delay,
         channel_gain: ChannelGain,
-    ) -> Self {
+    ) -> Result<Self, ClockPin::Error> {
+        // 拉低时钟信号电平，使芯片上电
+        clock_pin.set_low()?;
         // OK
-        Self {
+        Ok(Self {
             clock_pin,
             data_pin,
             delay_impl,
             channel_gain,
-        }
+        })
     }
 
     /// Check if the HX711 sensor is ready
