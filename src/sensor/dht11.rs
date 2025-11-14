@@ -1,23 +1,44 @@
-use core::{hint::spin_loop, time::Duration};
+use core::{
+    fmt::{Debug, Formatter},
+    hint::spin_loop,
+    time::Duration,
+};
 
 use embedded_hal::digital::{InputPin, OutputPin, PinState};
 use embedded_timers::{clock::Clock, delay::Delay};
 
 /// DHT11 sensor Error
-#[derive(Debug, Clone, Copy)]
-pub enum Error<I: InputPin, O: OutputPin> {
+#[derive(Clone, Copy)]
+pub enum Error<P: InputPin + OutputPin> {
     /// Digital I/O input error
-    Input(I::Error),
+    Input(P::Error),
     /// Digital I/O output error
-    Output(O::Error),
+    Output(P::Error),
     /// Sensor not ready
     NotReady,
     /// Check sum error
     CheckSum,
 }
 
+impl<P> Debug for Error<P>
+where
+    P: InputPin + OutputPin,
+    P::Error: Debug,
+{
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+        match self {
+            Self::Input(err) => write!(f, "The DHT11 data signal input is incorrect, {:?}", err),
+            Self::Output(err) => write!(f, "The DHT11 data signal ouput is incorrect, {:?}", err),
+            Self::NotReady => f.write_str("The DHT11 sensor is not ready."),
+            Self::CheckSum => {
+                f.write_str("The checksum of the input data of the DHT11 sensor is incorrect.")
+            }
+        }
+    }
+}
+
 /// DHT11 Sensor Driver
-pub struct DHT11<'a, P: InputPin + OutputPin, C: Clock> {
+pub struct Driver<'a, P: InputPin + OutputPin, C: Clock> {
     /// 1-Wire used GPIO pin
     pin: P,
     /// External clock implementation
@@ -26,7 +47,7 @@ pub struct DHT11<'a, P: InputPin + OutputPin, C: Clock> {
     delay_impl: Delay<'a, C>,
 }
 
-impl<'a, P: InputPin + OutputPin, C: Clock> DHT11<'a, P, C> {
+impl<'a, P: InputPin + OutputPin, C: Clock> Driver<'a, P, C> {
     /// Create an instance of the DHT11 sensor driver
     pub fn new(mut pin: P, clock_impl: &'a C) -> Result<Self, P::Error> {
         // DHT11上电后（DHT11上电后要等待 1S 以越过不稳定状态在此期间不能发送任何指令），测试环境
@@ -52,7 +73,7 @@ impl<'a, P: InputPin + OutputPin, C: Clock> DHT11<'a, P, C> {
         &mut self,
         target_state: PinState,
         timeout: Duration,
-    ) -> Result<Duration, Error<P, P>> {
+    ) -> Result<Duration, Error<P>> {
         // 获取开始时间点
         let start = self.clock_impl.now();
         // 目标电平是否为低电平
@@ -78,7 +99,7 @@ impl<'a, P: InputPin + OutputPin, C: Clock> DHT11<'a, P, C> {
     /// Note:
     /// - According to the document description, the read data is the result of the previous measurement.
     /// - If real-time measurement is required, please call it twice or more
-    pub fn read(&mut self) -> Result<(f32, f32), Error<P, P>> {
+    pub fn read(&mut self) -> Result<(f32, f32), Error<P>> {
         // 把数据总线（SDA）拉低一段时间至少18ms（最大不得超过30ms），通知传感器准备数据
         self.pin.set_low().map_err(|err| Error::Output(err))?;
         self.delay_impl.delay(Duration::from_millis(20));

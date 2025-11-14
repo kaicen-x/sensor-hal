@@ -1,3 +1,4 @@
+use core::fmt::{Debug, Formatter};
 use core::time::Duration;
 
 use embedded_hal::digital::{InputPin, OutputPin};
@@ -5,7 +6,7 @@ use embedded_timers::clock::Clock;
 use embedded_timers::delay::Delay;
 
 /// HX711 channel and gain
-#[derive(Debug, Clone, Copy)]
+#[derive(Clone, Copy)]
 pub enum ChannelGain {
     /// Channel: A, Gain: 128
     /// - Send one pulse
@@ -19,35 +20,51 @@ pub enum ChannelGain {
 }
 
 /// HX711 sensor Error
-pub enum Error<I: InputPin, O: OutputPin> {
+pub enum Error<IP: InputPin, OP: OutputPin> {
     /// Digital I/O input error
-    Input(I::Error),
+    Input(IP::Error),
     /// Digital I/O output error
-    Output(O::Error),
+    Output(OP::Error),
     /// Sensor not ready
     NotReady,
 }
 
+impl<IP, OP> Debug for Error<IP, OP>
+where
+    IP: InputPin,
+    IP::Error: Debug,
+    OP: OutputPin,
+    OP::Error: Debug,
+{
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+        match self {
+            Self::Input(err) => write!(f, "The HX711 data signal input is incorrect, {:?}", err),
+            Self::Output(err) => write!(f, "The HX711 data signal ouput is incorrect, {:?}", err),
+            Self::NotReady => f.write_str("The HX711 sensor is not ready."),
+        }
+    }
+}
+
 /// HX711 Sensor Driver
-pub struct HX711<'a, CP: OutputPin, DP: InputPin, C: Clock> {
+pub struct Driver<'a, IP: InputPin, OP: OutputPin, C: Clock> {
     /// Clock used GPIO pin
-    clock_pin: CP,
+    clock_pin: OP,
     /// Data used GPIO pin
-    data_pin: DP,
+    data_pin: IP,
     /// Channel and Gain config
     channel_gain: ChannelGain,
     /// Delay implementation for embedded_timers
     delay_impl: Delay<'a, C>,
 }
 
-impl<'a, CP: OutputPin, DP: InputPin, C: Clock> HX711<'a, CP, DP, C> {
+impl<'a, IP: InputPin, OP: OutputPin, C: Clock> Driver<'a, IP, OP, C> {
     /// Create an instance of the HX711 sensor driver
     pub fn new(
-        mut clock_pin: CP,
-        data_pin: DP,
+        mut clock_pin: OP,
+        data_pin: IP,
         channel_gain: ChannelGain,
         clock: &'a C,
-    ) -> Result<Self, CP::Error> {
+    ) -> Result<Self, OP::Error> {
         // 拉低时钟信号电平，使芯片上电
         clock_pin.set_low()?;
         // OK
@@ -60,14 +77,14 @@ impl<'a, CP: OutputPin, DP: InputPin, C: Clock> HX711<'a, CP, DP, C> {
     }
 
     /// Check if the HX711 sensor is ready
-    pub fn is_ready(&mut self) -> Result<bool, DP::Error> {
+    pub fn is_ready(&mut self) -> Result<bool, IP::Error> {
         // 当DATA引脚为高电平时，表示数据未就绪
         // 一旦为低电平，表示数据就绪，可以读取数据
         self.data_pin.is_low()
     }
 
     /// Read HX711 sensor output data
-    pub fn read(&mut self) -> Result<i32, Error<DP, CP>> {
+    pub fn read(&mut self) -> Result<i32, Error<IP, OP>> {
         // 检查数模转换芯片是否就绪
         let is_ready = self.is_ready().map_err(|err| Error::Input(err))?;
         if !is_ready {
@@ -141,7 +158,7 @@ impl<'a, CP: OutputPin, DP: InputPin, C: Clock> HX711<'a, CP, DP, C> {
     }
 
     /// Disable HX711 sensor
-    pub fn disable(&mut self) -> Result<(), CP::Error> {
+    pub fn disable(&mut self) -> Result<(), OP::Error> {
         // 时钟引脚保持60微秒以上即可使HX711芯片断电
         self.clock_pin.set_high()?;
         self.delay_impl.delay(Duration::from_micros(60));
@@ -149,13 +166,13 @@ impl<'a, CP: OutputPin, DP: InputPin, C: Clock> HX711<'a, CP, DP, C> {
     }
 
     /// Enable HX711 sensor
-    pub fn enable(&mut self) -> Result<(), CP::Error> {
+    pub fn enable(&mut self) -> Result<(), OP::Error> {
         // 将时钟信号设为低电平，HX711芯片上电，
         self.clock_pin.set_low()
     }
 
     /// Reset HX711 sensor
-    pub fn reset(&mut self) -> Result<(), CP::Error> {
+    pub fn reset(&mut self) -> Result<(), OP::Error> {
         // 断电再上电即可实现重置
         self.disable()?;
         self.enable()
