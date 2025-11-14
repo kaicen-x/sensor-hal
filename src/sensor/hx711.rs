@@ -1,5 +1,8 @@
-use embedded_hal::delay::DelayNs;
+use core::time::Duration;
+
 use embedded_hal::digital::{InputPin, OutputPin};
+use embedded_timers::clock::Clock;
+use embedded_timers::delay::Delay;
 
 /// HX711 channel and gain
 #[derive(Debug, Clone, Copy)]
@@ -15,8 +18,8 @@ pub enum ChannelGain {
     ChannelA64 = 3,
 }
 
-/// Digital I/O Error
-pub enum DigitalIoError<I: InputPin, O: OutputPin> {
+/// HX711 sensor Error
+pub enum Error<I: InputPin, O: OutputPin> {
     /// Digital I/O input error
     Input(I::Error),
     /// Digital I/O output error
@@ -26,54 +29,49 @@ pub enum DigitalIoError<I: InputPin, O: OutputPin> {
 }
 
 /// HX711 Sensor Driver
-pub struct Driver<ClockPin, DataPin, Delay> {
+pub struct HX711<'a, CP: OutputPin, DP: InputPin, C: Clock> {
     /// Clock used GPIO pin
-    clock_pin: ClockPin,
+    clock_pin: CP,
     /// Data used GPIO pin
-    data_pin: DataPin,
-    /// External delay implementation
-    delay_impl: Delay,
+    data_pin: DP,
     /// Channel and Gain config
     channel_gain: ChannelGain,
+    /// Delay implementation for embedded_timers
+    delay_impl: Delay<'a, C>,
 }
 
-impl<ClockPin, DataPin, Delay> Driver<ClockPin, DataPin, Delay>
-where
-    ClockPin: OutputPin,
-    DataPin: InputPin,
-    Delay: DelayNs,
-{
+impl<'a, CP: OutputPin, DP: InputPin, C: Clock> HX711<'a, CP, DP, C> {
     /// Create an instance of the HX711 sensor driver
     pub fn new(
-        mut clock_pin: ClockPin,
-        data_pin: DataPin,
-        delay_impl: Delay,
+        mut clock_pin: CP,
+        data_pin: DP,
         channel_gain: ChannelGain,
-    ) -> Result<Self, ClockPin::Error> {
+        clock: &'a C,
+    ) -> Result<Self, CP::Error> {
         // 拉低时钟信号电平，使芯片上电
         clock_pin.set_low()?;
         // OK
         Ok(Self {
             clock_pin,
             data_pin,
-            delay_impl,
             channel_gain,
+            delay_impl: Delay::new(clock),
         })
     }
 
     /// Check if the HX711 sensor is ready
-    pub fn is_ready(&mut self) -> Result<bool, DataPin::Error> {
+    pub fn is_ready(&mut self) -> Result<bool, DP::Error> {
         // 当DATA引脚为高电平时，表示数据未就绪
         // 一旦为低电平，表示数据就绪，可以读取数据
         self.data_pin.is_low()
     }
 
     /// Read HX711 sensor output data
-    pub fn read(&mut self) -> Result<i32, DigitalIoError<DataPin, ClockPin>> {
+    pub fn read(&mut self) -> Result<i32, Error<DP, CP>> {
         // 检查数模转换芯片是否就绪
-        let is_ready = self.is_ready().map_err(|err| DigitalIoError::Input(err))?;
+        let is_ready = self.is_ready().map_err(|err| Error::Input(err))?;
         if !is_ready {
-            return Err(DigitalIoError::NotReady);
+            return Err(Error::NotReady);
         }
 
         // 读取到的原始数据
@@ -84,16 +82,12 @@ where
             // 发送时钟信号高电平，表示要开始读取一位数据
             self.clock_pin
                 .set_high()
-                .map_err(|err| DigitalIoError::Output(err))?;
+                .map_err(|err| Error::Output(err))?;
             // 维持高电平信号1微秒能保证时钟信号到达
-            self.delay_impl.delay_us(1);
+            self.delay_impl.delay(Duration::from_micros(1));
 
             // 读取数据引脚的电平
-            if self
-                .data_pin
-                .is_high()
-                .map_err(|err| DigitalIoError::Input(err))?
-            {
+            if self.data_pin.is_high().map_err(|err| Error::Input(err))? {
                 // 高电平表示读取到的二进制位为1
                 // 把原来的数据左移一位，然后将末尾一位置为1
                 raw_data = (raw_data << 1) | 1
@@ -104,11 +98,9 @@ where
             }
 
             // 发送时钟信号低电平，表示读取完一位数据
-            self.clock_pin
-                .set_low()
-                .map_err(|err| DigitalIoError::Output(err))?;
+            self.clock_pin.set_low().map_err(|err| Error::Output(err))?;
             // 维持低电平信号1微秒能保证时钟信号到达
-            self.delay_impl.delay_us(1);
+            self.delay_impl.delay(Duration::from_micros(1));
         }
 
         // 设置通道和增益
@@ -120,15 +112,13 @@ where
             // 发送时钟信号高电平
             self.clock_pin
                 .set_high()
-                .map_err(|err| DigitalIoError::Output(err))?;
+                .map_err(|err| Error::Output(err))?;
             // 维持高电平信号1微秒能保证时钟信号到达
-            self.delay_impl.delay_us(1);
+            self.delay_impl.delay(Duration::from_micros(1));
             // 发送时钟信号低电平
-            self.clock_pin
-                .set_low()
-                .map_err(|err| DigitalIoError::Output(err))?;
+            self.clock_pin.set_low().map_err(|err| Error::Output(err))?;
             // 维持高电平信号1微秒能保证时钟信号到达
-            self.delay_impl.delay_us(1);
+            self.delay_impl.delay(Duration::from_micros(1));
         }
 
         // 确保我们只处理低24位，屏蔽掉可能的高8位
@@ -151,21 +141,21 @@ where
     }
 
     /// Disable HX711 sensor
-    pub fn disable(&mut self) -> Result<(), ClockPin::Error> {
+    pub fn disable(&mut self) -> Result<(), CP::Error> {
         // 时钟引脚保持60微秒以上即可使HX711芯片断电
         self.clock_pin.set_high()?;
-        self.delay_impl.delay_us(60);
+        self.delay_impl.delay(Duration::from_micros(60));
         Ok(())
     }
 
     /// Enable HX711 sensor
-    pub fn enable(&mut self) -> Result<(), ClockPin::Error> {
+    pub fn enable(&mut self) -> Result<(), CP::Error> {
         // 将时钟信号设为低电平，HX711芯片上电，
         self.clock_pin.set_low()
     }
 
     /// Reset HX711 sensor
-    pub fn reset(&mut self) -> Result<(), ClockPin::Error> {
+    pub fn reset(&mut self) -> Result<(), CP::Error> {
         // 断电再上电即可实现重置
         self.disable()?;
         self.enable()
