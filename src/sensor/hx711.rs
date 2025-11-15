@@ -45,6 +45,16 @@ where
     }
 }
 
+#[cfg(feature = "std")]
+impl<IP: InputPin, OP: OutputPin> std::fmt::Display for Error<IP, OP> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+        Debug::fmt(self, f)
+    }
+}
+
+#[cfg(feature = "std")]
+impl<IP: InputPin, OP: OutputPin> std::error::Error for Error<IP, OP> {}
+
 /// HX711 Sensor Driver
 pub struct Driver<'a, IP: InputPin, OP: OutputPin, C: Clock> {
     /// Clock used GPIO pin

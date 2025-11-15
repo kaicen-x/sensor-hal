@@ -37,6 +37,16 @@ where
     }
 }
 
+#[cfg(feature = "std")]
+impl<P: InputPin + OutputPin> std::fmt::Display for Error<P> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+        Debug::fmt(self, f)
+    }
+}
+
+#[cfg(feature = "std")]
+impl<P: InputPin + OutputPin> std::error::Error for Error<P> {}
+
 /// DHT11 Sensor Driver
 pub struct Driver<'a, P: InputPin + OutputPin, C: Clock> {
     /// 1-Wire used GPIO pin

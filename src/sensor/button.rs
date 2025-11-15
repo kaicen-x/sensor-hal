@@ -55,6 +55,16 @@ where
     }
 }
 
+#[cfg(feature = "std")]
+impl<P: InputPin> std::fmt::Display for AntishakeDriverError<P> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+        Debug::fmt(self, f)
+    }
+}
+
+#[cfg(feature = "std")]
+impl<P: InputPin> std::error::Error for AntishakeDriverError<P> {}
+
 /// Anti-shake button sensor driver
 ///
 /// TODO: Unfortunately, I currently don't have a good way to decouple interrupts
