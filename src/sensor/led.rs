@@ -1,4 +1,6 @@
-use embedded_hal::digital::{OutputPin, PinState};
+use embedded_hal::digital::OutputPin;
+
+pub use embedded_hal::digital::PinState;
 
 /// LED Sensor Driver
 ///
