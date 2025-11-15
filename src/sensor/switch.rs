@@ -2,33 +2,31 @@ use embedded_hal::digital::OutputPin;
 
 pub use embedded_hal::digital::PinState;
 
-/// LED Sensor Driver
-///
-/// What is the goal of encapsulating the LED driver?
-/// Generally, controlling an LED is very simple and does not require a driver library at all.
-/// However, when the LED's lighting state suddenly changes from high level to low level,
-/// do you have to modify each calling place one by one? This LED driver is designed to solve this problem.
+/// What is the goal of encapsulating the switch driver?
+/// Generally, controlling an switch is very simple and does not require a driver library at all.
+/// However, when the switch's lighting state suddenly changes from high level to low level,
+/// do you have to modify each calling place one by one?    This switch driver is designed to solve this problem.
 pub struct Driver<P: OutputPin> {
-    /// LED used GPIO pin
+    /// Switch used GPIO pin
     pin: P,
     /// Output level type
     out_level: PinState,
 }
 
 impl<P: OutputPin> Driver<P> {
-    /// Create an instance of the LED sensor driver
-    /// 
-    /// - out_level: What level should be used to make the LED conduct
+    /// Create an instance of the switch sensor driver
+    ///
+    /// - out_level: What level should be used to make the switch on
     pub fn new(pin: P, out_level: PinState) -> Self {
         Self { pin, out_level }
     }
 
-    /// On the LED sensor
+    /// On the switch sensor
     pub fn on(&mut self) -> Result<(), P::Error> {
         self.pin.set_state(self.out_level)
     }
 
-    /// Off the LED sensor
+    /// Off the switch sensor
     pub fn off(&mut self) -> Result<(), P::Error> {
         match self.out_level {
             PinState::High => self.pin.set_low(),
