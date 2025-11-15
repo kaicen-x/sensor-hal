@@ -2,6 +2,8 @@ use embedded_hal::digital::OutputPin;
 
 pub use embedded_hal::digital::PinState;
 
+/// Switch sensor driver
+/// 
 /// What is the goal of encapsulating the switch driver?
 /// Generally, controlling an switch is very simple and does not require a driver library at all.
 /// However, when the switch's lighting state suddenly changes from high level to low level,
