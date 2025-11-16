@@ -189,7 +189,7 @@ impl<'a, IP: InputPin, OP: OutputPin, C: Clock> Driver<'a, IP, OP, C> {
     }
 
     /// Setting HX711 sensor channel and gain
-    pub fn set_gain(&mut self, gain: ChannelGain) {
+    pub fn set_channel_gain(&mut self, gain: ChannelGain) {
         // 设置通道和增益后，根据厂家的文档描述，需要采集4次以上新的数据才会稳定
         self.channel_gain = gain;
     }
