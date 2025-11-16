@@ -51,7 +51,7 @@ impl<P: InputPin + OutputPin> std::fmt::Display for Error<P> {
 impl<P: InputPin + OutputPin> std::error::Error for Error<P> {}
 
 /// DHT11 Sensor Driver
-pub struct Driver<'a, P: InputPin + OutputPin, C: Clock> {
+pub struct Driver<'a, C: Clock, P: InputPin + OutputPin> {
     /// 1-Wire used GPIO pin
     pin: P,
     /// External clock implementation
@@ -60,7 +60,7 @@ pub struct Driver<'a, P: InputPin + OutputPin, C: Clock> {
     delay_impl: Delay<'a, C>,
 }
 
-impl<'a, P: InputPin + OutputPin, C: Clock> Driver<'a, P, C> {
+impl<'a, C: Clock, P: InputPin + OutputPin> Driver<'a, C, P> {
     /// Create an instance of the DHT11 sensor driver
     pub fn new(clock: &'a C, mut pin: P) -> Result<Self, P::Error> {
         // DHT11上电后（DHT11上电后要等待 1S 以越过不稳定状态在此期间不能发送任何指令），测试环境

@@ -56,25 +56,25 @@ impl<IP: InputPin, OP: OutputPin> std::fmt::Display for Error<IP, OP> {
 impl<IP: InputPin, OP: OutputPin> std::error::Error for Error<IP, OP> {}
 
 /// HX711 Sensor Driver
-pub struct Driver<'a, IP: InputPin, OP: OutputPin, C: Clock> {
+pub struct Driver<'a, C: Clock, I: InputPin, O: OutputPin> {
     /// Clock used GPIO pin
-    clock_pin: OP,
+    clock_pin: O,
     /// Data used GPIO pin
-    data_pin: IP,
+    data_pin: I,
     /// Channel and Gain config
     channel_gain: ChannelGain,
     /// Delay implementation for embedded_timers
     delay_impl: Delay<'a, C>,
 }
 
-impl<'a, IP: InputPin, OP: OutputPin, C: Clock> Driver<'a, IP, OP, C> {
+impl<'a, C: Clock, I: InputPin, O: OutputPin> Driver<'a, C, I, O> {
     /// Create an instance of the HX711 sensor driver
     pub fn new(
         clock: &'a C,
-        mut clock_pin: OP,
-        data_pin: IP,
+        mut clock_pin: O,
+        data_pin: I,
         channel_gain: ChannelGain,
-    ) -> Result<Self, OP::Error> {
+    ) -> Result<Self, O::Error> {
         // 拉低时钟信号电平，使芯片上电
         clock_pin.set_low()?;
         // OK
@@ -87,14 +87,14 @@ impl<'a, IP: InputPin, OP: OutputPin, C: Clock> Driver<'a, IP, OP, C> {
     }
 
     /// Check if the HX711 sensor is ready
-    pub fn is_ready(&mut self) -> Result<bool, IP::Error> {
+    pub fn is_ready(&mut self) -> Result<bool, I::Error> {
         // 当DATA引脚为高电平时，表示数据未就绪
         // 一旦为低电平，表示数据就绪，可以读取数据
         self.data_pin.is_low()
     }
 
     /// Read HX711 sensor output data
-    pub fn read(&mut self) -> Result<i32, Error<IP, OP>> {
+    pub fn read(&mut self) -> Result<i32, Error<I, O>> {
         // 检查数模转换芯片是否就绪
         let is_ready = self.is_ready().map_err(|err| Error::Input(err))?;
         if !is_ready {
@@ -168,7 +168,7 @@ impl<'a, IP: InputPin, OP: OutputPin, C: Clock> Driver<'a, IP, OP, C> {
     }
 
     /// Disable HX711 sensor
-    pub fn disable(&mut self) -> Result<(), OP::Error> {
+    pub fn disable(&mut self) -> Result<(), O::Error> {
         // 时钟引脚保持60微秒以上即可使HX711芯片断电
         self.clock_pin.set_high()?;
         self.delay_impl.delay(Duration::from_micros(60));
@@ -176,13 +176,13 @@ impl<'a, IP: InputPin, OP: OutputPin, C: Clock> Driver<'a, IP, OP, C> {
     }
 
     /// Enable HX711 sensor
-    pub fn enable(&mut self) -> Result<(), OP::Error> {
+    pub fn enable(&mut self) -> Result<(), O::Error> {
         // 将时钟信号设为低电平，HX711芯片上电，
         self.clock_pin.set_low()
     }
 
     /// Reset HX711 sensor
-    pub fn reset(&mut self) -> Result<(), OP::Error> {
+    pub fn reset(&mut self) -> Result<(), O::Error> {
         // 断电再上电即可实现重置
         self.disable()?;
         self.enable()
