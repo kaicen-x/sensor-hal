@@ -70,10 +70,10 @@ pub struct Driver<'a, IP: InputPin, OP: OutputPin, C: Clock> {
 impl<'a, IP: InputPin, OP: OutputPin, C: Clock> Driver<'a, IP, OP, C> {
     /// Create an instance of the HX711 sensor driver
     pub fn new(
+        clock: &'a C,
         mut clock_pin: OP,
         data_pin: IP,
         channel_gain: ChannelGain,
-        clock: &'a C,
     ) -> Result<Self, OP::Error> {
         // 拉低时钟信号电平，使芯片上电
         clock_pin.set_low()?;

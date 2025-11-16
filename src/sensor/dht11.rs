@@ -31,7 +31,10 @@ where
             Self::Output(err) => write!(f, "The DHT11 data signal ouput is incorrect, {:?}.", err),
             Self::NotReady => write!(f, "The DHT11 sensor is not ready."),
             Self::CheckSum => {
-                write!(f, "The checksum of the input data of the DHT11 sensor is incorrect.")
+                write!(
+                    f,
+                    "The checksum of the input data of the DHT11 sensor is incorrect."
+                )
             }
         }
     }
@@ -59,7 +62,7 @@ pub struct Driver<'a, P: InputPin + OutputPin, C: Clock> {
 
 impl<'a, P: InputPin + OutputPin, C: Clock> Driver<'a, P, C> {
     /// Create an instance of the DHT11 sensor driver
-    pub fn new(mut pin: P, clock_impl: &'a C) -> Result<Self, P::Error> {
+    pub fn new(clock: &'a C, mut pin: P) -> Result<Self, P::Error> {
         // DHT11上电后（DHT11上电后要等待 1S 以越过不稳定状态在此期间不能发送任何指令），测试环境
         // 温湿度数据，并记录数据，同时 DHT11的DATA数据线由上拉电阻拉高一直保持高电平；此时 DHT11的
         // DATA 引脚处于输入状态，时刻检测外部信号。
@@ -67,13 +70,13 @@ impl<'a, P: InputPin + OutputPin, C: Clock> Driver<'a, P, C> {
         // 拉高电平(使总线处于空闲状态)
         pin.set_high()?;
         // 创建延迟等待实例
-        let mut delay = embedded_timers::delay::Delay::new(clock_impl);
+        let mut delay = embedded_timers::delay::Delay::new(clock);
         // 拉高至少1秒
         delay.delay(Duration::from_secs(1));
         // OK
         Ok(Self {
             pin,
-            clock_impl,
+            clock_impl: clock,
             delay_impl: delay,
         })
     }
