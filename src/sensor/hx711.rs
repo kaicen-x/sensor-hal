@@ -40,7 +40,7 @@ where
         match self {
             Self::Input(err) => write!(f, "The HX711 data signal input is incorrect, {:?}", err),
             Self::Output(err) => write!(f, "The HX711 data signal ouput is incorrect, {:?}", err),
-            Self::NotReady => f.write_str("The HX711 sensor is not ready."),
+            Self::NotReady => write!(f, "The HX711 sensor is not ready."),
         }
     }
 }

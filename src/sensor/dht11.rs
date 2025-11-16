@@ -27,11 +27,11 @@ where
 {
     fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
         match self {
-            Self::Input(err) => write!(f, "The DHT11 data signal input is incorrect, {:?}", err),
-            Self::Output(err) => write!(f, "The DHT11 data signal ouput is incorrect, {:?}", err),
-            Self::NotReady => f.write_str("The DHT11 sensor is not ready."),
+            Self::Input(err) => write!(f, "The DHT11 data signal input is incorrect, {:?}.", err),
+            Self::Output(err) => write!(f, "The DHT11 data signal ouput is incorrect, {:?}.", err),
+            Self::NotReady => write!(f, "The DHT11 sensor is not ready."),
             Self::CheckSum => {
-                f.write_str("The checksum of the input data of the DHT11 sensor is incorrect.")
+                write!(f, "The checksum of the input data of the DHT11 sensor is incorrect.")
             }
         }
     }

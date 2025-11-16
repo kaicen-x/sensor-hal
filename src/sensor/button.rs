@@ -49,8 +49,8 @@ where
 {
     fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
         match self {
-            Self::Raw(err) => write!(f, "The button signal input is incorrect, {:?}", err),
-            Self::NotReady => f.write_str("The button sensor is not ready."),
+            Self::Raw(err) => write!(f, "The button signal input is incorrect, {:?}.", err),
+            Self::NotReady => write!(f, "The button sensor is not ready."),
         }
     }
 }
